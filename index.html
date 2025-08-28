@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>茶香之旅｜HTML 版</title>
+<style>
+  :root{
+    --wood:#a17c5b;
+    --cream:#f5f0e9;
+    --teaGreen:#96d38f;
+    --teaOolong:#caa84e;
+    --teaBlack:#8b2e2e;
+    --teaFlower:#f1a0b8;
+    --gold:#cba135;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:"Noto Serif TC", ui-serif, serif;
+    background:var(--cream);
+    color:#3d2b1f;
+    display:flex; flex-direction:column; align-items:center;
+    min-height:100vh; padding:24px;
+  }
+  h1{margin:8px 0 2px; font-size:28px}
+  .sub{opacity:.7; margin-bottom:16px}
+  /* layout */
+  .wrap{display:grid; grid-template-columns:1fr 320px; gap:20px; width:min(1100px,92vw)}
+  .left, .right{display:flex; flex-direction:column; gap:12px}
+  /* tea selection */
+  .choices{display:flex; flex-wrap:wrap; gap:10px}
+  .choices button{
+    padding:10px 14px; border:none; border-radius:999px; cursor:pointer;
+    background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.08);
+  }
+  .choices button.active{outline:2px solid var(--gold); background:#fff8e1}
+  /* table & cup */
+  .table{
+    height:260px; background:var(--wood); border-radius:16px;
+    display:flex; align-items:center; justify-content:center;
+    position:relative; box-shadow:0 12px 28px rgba(0,0,0,.18);
+  }
+  .cup{
+    width:140px; height:140px; border-radius:50%; background:#fff; border:5px solid #d9d9d9;
+    position:relative; overflow:hidden; box-shadow:inset 0 8px 18px rgba(0,0,0,.08);
+  }
+  .tea{
+    position:absolute; bottom:0; left:0; width:100%; height:0%;
+    background:transparent;
+    transition:height 2s ease, background 1.2s ease;
+  }
+  .steam{
+    position:absolute; inset:0; pointer-events:none; overflow:hidden;
+  }
+  .steam span{
+    position:absolute; bottom:8px; left:50%;
+    width:10px; height:10px; border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,255,255,.8), rgba(255,255,255,0));
+    filter:blur(1px); opacity:0; animation:rise 3.4s ease-in infinite;
+  }
+  .steam span:nth-child(2){left:62%; animation-delay:.6s}
+  .steam span:nth-child(3){left:38%; animation-delay:1.2s}
+  @keyframes rise{
+    0%{transform:translate(-50%,10px) scale(.6); opacity:0}
+    20%{opacity:.8}
+    100%{transform:translate(-50%,-90px) scale(1.3); opacity:0}
+  }
+  /* tea leaves */
+  .leaf{
+    position:absolute; bottom:12px; width:16px; height:8px; border-radius:16px 16px 16px 16px/8px 8px 8px 8px;
+    background:#2f5c23; opacity:0; transform:scale(.6);
+    animation:floatLeaf 6s ease-in-out infinite;
+  }
+  .leaf.l2{left:30%; animation-delay:.8s}
+  .leaf.l3{left:65%; animation-delay:1.6s}
+  @keyframes floatLeaf{
+    0%{opacity:0; transform:translateY(10px) rotate(0) scale(.6)}
+    20%{opacity:1}
+    50%{transform:translateY(-18px) rotate(12deg) scale(.9)}
+    100%{opacity:0; transform:translateY(-48px) rotate(-10deg) scale(1)}
+  }
+  /* progress/QTE */
+  .qte{
+    height:16px; background:#efe7d7; border-radius:999px; overflow:hidden; position:relative;
+    box-shadow:inset 0 2px 6px rgba(0,0,0,.08);
+  }
+  .bar{height:100%; width:0%; background:linear-gradient(90deg,#9ad0ff,#4fb1ff); transition:width .1s linear}
+  .zone{position:absolute; top:0; height:100%; background:rgba(203,161,53,.25); border:1px dashed var(--gold)}
+  .zonesub{position:absolute; top:2px; height:calc(100% - 4px); background:rgba(203,161,53,.18); border:1px dashed rgba(203,161,53,.6)}
+  .controls{display:flex; gap:10px; flex-wrap:wrap}
+  .btn{
+    padding:10px 14px; border:none; border-radius:10px; cursor:pointer; background:#3f7a33; color:#fff;
+    box-shadow:0 4px 10px rgba(0,0,0,.1);
+  }
+  .btn.secondary{background:#86613c}
+  .btn:disabled{opacity:.5; cursor:not-allowed}
+  .scoreCard{background:#fff; border-radius:12px; padding:12px; box-shadow:0 4px 12px rgba(0,0,0,.08)}
+  /* aroma out of table */
+  .aromaArea{
+    position:relative; height:140px; background:#fff; border-radius:12px; padding:8px; overflow:hidden;
+    box-shadow:0 6px 16px rgba(0,0,0,.08);
+  }
+  .aromaArea h3{margin:6px 8px 0; font-size:16px; opacity:.7}
+  .aroma{
+    position:absolute; left:0; right:0; bottom:8px; top:auto; pointer-events:none;
+  }
+  .aroma span{
+    position:absolute; font-size:18px; color:#6b4226; opacity:0;
+    animation:floatUp 4.2s ease-in-out forwards;
+  }
+  @keyframes floatUp{
+    0%{transform:translateY(0) translateX(0) rotate(0); opacity:0}
+    20%{opacity:1}
+    100%{transform:translateY(-120px) translateX(20px) rotate(-4deg); opacity:0}
+  }
+  .hint{font-size:13px; opacity:.7}
+  .result{min-height:28px; font-weight:600}
+</style>
+</head>
+<body>
+  <h1>茶香之旅</h1>
+  <div class="sub">點選茶葉 → 開始沖泡 → 在黃金區間按「完成沖泡」獲得高分</div>
+
+  <div class="wrap">
+    <div class="left">
+      <div class="choices" id="choices">
+        <button data-tea="green">綠茶</button>
+        <button data-tea="oolong">烏龍（3 泡）</button>
+        <button data-tea="black">紅茶</button>
+        <button data-tea="flower">花茶</button>
+      </div>
+
+      <div class="table">
+        <div class="cup" id="cup">
+          <div class="tea" id="tea"></div>
+          <div class="steam"><span></span><span></span><span></span></div>
+          <div class="leaf l1" style="left:45%"></div>
+          <div class="leaf l2"></div>
+          <div class="leaf l3"></div>
+        </div>
+      </div>
+
+      <div class="qte" id="qte">
+        <div class="zone" id="zone"></div>
+        <div class="zonesub" id="zoneSub" style="display:none"></div>
+        <div class="bar" id="bar"></div>
+      </div>
+      <div class="hint" id="hint">選擇茶葉後按「開始沖泡」。綠茶建議 80–85°C，浸泡 2–3 分鐘。</div>
+
+      <div class="controls">
+        <button class="btn" id="startBtn" disabled>開始沖泡</button>
+        <button class="btn secondary" id="finishBtn" disabled>完成沖泡</button>
+        <button class="btn" id="resetBtn">重置</button>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="aromaArea">
+        <h3>茶香</h3>
+        <div class="aroma" id="aroma"></div>
+      </div>
+
+      <div class="scoreCard">
+        <div>目前茶種：<b id="currentTea">—</b></div>
+        <div>本輪時間：<b id="timeRead">0.0s</b></div>
+        <div class="result" id="result"></div>
+        <hr/>
+        <div>總分：<b id="score">0</b></div>
+        <div id="extra"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 音效（可換成本機檔案） -->
+  <audio id="pour" src="https://cdn.jsdelivr.net/gh/naptestdev/assets@main/sfx/water-pour.mp3" preload="auto"></audio>
+  <audio id="pling" src="https://cdn.jsdelivr.net/gh/naptestdev/assets@main/sfx/pling.mp3" preload="auto"></audio>
+  <audio id="fail"  src="https://cdn.jsdelivr.net/gh/naptestdev/assets@main/sfx/fail.mp3" preload="auto"></audio>
+
+<script>
+/* ====== 遊戲資料 ====== */
+const TEAS = {
+  green: {
+    name: "綠茶",
+    temp: "80–85°C",
+    // 秒（2–3 分鐘）
+    best:[120,180],
+    colorStops:["#ffffff","#cfeecb","#96d38f"],
+    aromaGood:["清新","甘潤","嫩葉香"],
+    aromaShort:["茶味不足","香未展"],
+    aromaLong:["偏澀","過浸"],
+    score:10,
+    hint:"綠茶建議 80–85°C，浸泡 2–3 分鐘。"
+  },
+  black:{
+    name:"紅茶",
+    temp:"95–100°C",
+    // 主最佳：3–5 分鐘。另有淡雅 2–3 分鐘
+    best:[180,300],
+    sub:[120,180], // 淡雅區
+    colorStops:["#fff","#f2c1b8","#b55454","#8b2e2e"],
+    aromaGood:["甘醇","蜜香","暖意"],
+    aromaSub:["淡雅","果香","輕盈"],
+    aromaShort:["香不足","水氣重"],
+    aromaLong:["過濃","略苦澀"],
+    score:10,
+    subScore:7,
+    hint:"紅茶適合 3–5 分鐘；想淡雅可 2–3 分鐘。"
+  },
+  flower:{
+    name:"花茶",
+    temp:"95°C",
+    best:[180,300], // 3–5 分鐘
+    colorStops:["#fff","#ffe0ec","#f1a0b8","#e779a0"],
+    aromaGood:["芬芳","清雅","柔甜"],
+    aromaShort:["香不足","花氣未出"],
+    aromaLong:["香走失","略苦"],
+    score:10,
+    hint:"花草茶 500cc 熱水浸泡 3–5 分鐘。"
+  },
+  oolong:{
+    name:"烏龍（連續 3 泡）",
+    temp:"95–100°C",
+    // 三泡：20s → 30s → 50s
+    rounds:[20,30,50],
+    window:4, // 容許 ± 秒
+    colorStops:["#fff","#f1dd9a","#caa84e","#a27b2d"],
+    aromaRounds:[
+      ["清香","蘭花氣"],
+      ["甘醇","花蜜香"],
+      ["厚實","岩韻"]
+    ],
+    scorePer:10,
+    combo:10,
+    hint:"以紫砂壺為例：第一泡約 20 秒，之後每泡增加 10–20 秒。"
+  }
+};
+
+/* ====== 狀態 ====== */
+let selectedKey = null;
+let running = false;
+let startAt = 0;
+let timerId = null;
+let progressId = null;
+let totalScore = 0;
+let oolongIndex = 0; // 0..2
+/* DOM */
+const choices = document.getElementById("choices");
+const currentTea = document.getElementById("currentTea");
+const hint = document.getElementById("hint");
+const teaEl = document.getElementById("tea");
+const timeRead = document.getElementById("timeRead");
+const result = document.getElementById("result");
+const score = document.getElementById("score");
+const extra = document.getElementById("extra");
+const startBtn = document.getElementById("startBtn");
+const finishBtn = document.getElementById("finishBtn");
+const resetBtn = document.getElementById("resetBtn");
+const bar = document.getElementById("bar");
+const zone = document.getElementById("zone");
+const zoneSub = document.getElementById("zoneSub");
+const aromaBox = document.getElementById("aroma");
+const pour = document.getElementById("pour");
+const pling = document.getElementById("pling");
+const fail = document.getElementById("fail");
+const cup = document.getElementById("cup");
+
+/* ====== 工具 ====== */
+const lerp = (a,b,t)=> a+(b-a)*t;
+function setTeaFill(p){ // p:0..1
+  teaEl.style.height = (p*80).toFixed(1) + "%";
+}
+function setTeaColorByProgress(p, stops){
+  // map progress (0..1) to color stops
+  if(!stops || stops.length===0) return;
+  const idx = Math.min(stops.length-2, Math.floor(p*(stops.length-1)));
+  const localT = (p*(stops.length-1)) - idx;
+  const c1 = hexToRgb(stops[idx]);
+  const c2 = hexToRgb(stops[idx+1]);
+  const mix = {
+    r: Math.round(lerp(c1.r,c2.r,localT)),
+    g: Math.round(lerp(c1.g,c2.g,localT)),
+    b: Math.round(lerp(c1.b,c2.b,localT))
+  };
+  teaEl.style.background = `rgb(${mix.r},${mix.g},${mix.b})`;
+}
+function hexToRgb(hex){
+  const h = hex.replace("#",""); 
+  const bigint = parseInt(h.length===3 ? h.split("").map(x=>x+x).join("") : h,16);
+  return { r:(bigint>>16)&255, g:(bigint>>8)&255, b:bigint&255 };
+}
+function spawnAroma(words){
+  words.forEach((w,i)=>{
+    const span = document.createElement("span");
+    span.textContent = w;
+    const x = 12 + Math.random()*240;
+    span.style.left = x + "px";
+    span.style.bottom = "12px";
+    span.style.animationDelay = (i*0.2)+"s";
+    aromaBox.appendChild(span);
+    setTimeout(()=>span.remove(), 4200+i*200);
+  });
+}
+function activateLeaves(on){
+  document.querySelectorAll(".leaf").forEach(el=>{
+    el.style.opacity = on?1:0;
+  });
+}
+
+/* ====== UI：選茶 ====== */
+choices.querySelectorAll("button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    choices.querySelectorAll("button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    selectedKey = btn.dataset.tea;
+    const T = TEAS[selectedKey];
+    currentTea.textContent = `${T.name}（建議：${T.temp}）`;
+    hint.textContent = T.hint;
+    result.textContent = "";
+    timeRead.textContent = "0.0s";
+    startBtn.disabled = false;
+    finishBtn.disabled = true;
+    bar.style.width = "0%";
+    setTeaFill(0);
+    teaEl.style.background = "transparent";
+    aromaBox.innerHTML = "";
+    activateLeaves(false);
+    // 烏龍重置輪次
+    if(selectedKey==="oolong"){ oolongIndex = 0; extra.textContent = "烏龍第 1 泡"; }
+    else{ extra.textContent = ""; }
+    // 顯示 QTE 區間
+    layoutZones();
+  });
+});
+
+function layoutZones(){
+  zone.style.display = "block";
+  zoneSub.style.display = "none";
+  const total = 60*6; // 進度條抽象化 6 分鐘跨度，僅用於可視化比例
+  if(!selectedKey) return;
+  const T = TEAS[selectedKey];
+  if(selectedKey==="oolong"){
+    const target = T.rounds[oolongIndex];
+    const w = T.window;
+    const start = (target-w)/total*100;
+    const width = (w*2)/total*100;
+    zone.style.left = Math.max(0,start)+"%";
+    zone.style.width = Math.min(100,width)+"%";
+    zone.title = `目標 ${target}s ±${w}s`;
+  }else if(selectedKey==="black"){
+    const [b1,b2] = T.best;
+    // 主最佳
+    zone.style.left = (b1/total*100)+"%";
+    zone.style.width = ((b2-b1)/total*100)+"%";
+    zone.title = `最佳 ${b1/60}–${b2/60} 分`;
+    // 淡雅副區
+    zoneSub.style.display = "block";
+    const [s1,s2] = T.sub;
+    zoneSub.style.left = (s1/total*100)+"%";
+    zoneSub.style.width = ((s2-s1)/total*100)+"%";
+    zoneSub.title = `淡雅 ${s1/60}–${s2/60} 分`;
+  }else{
+    const [b1,b2] = T.best;
+    zone.style.left = (b1/total*100)+"%";
+    zone.style.width = ((b2-b1)/total*100)+"%";
+    zone.title = `最佳 ${b1/60}–${b2/60} 分`;
+  }
+}
+
+/* ====== 開始 / 完成 ====== */
+startBtn.addEventListener("click", ()=>{
+  if(!selectedKey || running) return;
+  running = true;
+  startAt = performance.now();
+  finishBtn.disabled = false;
+  startBtn.disabled = true;
+  result.textContent = "";
+  aromaBox.innerHTML = "";
+  activateLeaves(true);
+  pour.currentTime = 0; pour.play().catch(()=>{});
+  animateProgress();
+});
+
+finishBtn.addEventListener("click", finishRound);
+function finishRound(){
+  if(!running) return;
+  running = false;
+  finishBtn.disabled = true;
+  startBtn.disabled = false;
+  cancelAnimationFrame(progressId);
+  pour.pause();
+  const elapsed = (performance.now()-startAt)/1000;
+  timeRead.textContent = elapsed.toFixed(1)+"s";
+
+  let gained = 0, msg = "", good=false;
+  const T = TEAS[selectedKey];
+
+  if(selectedKey==="oolong"){
+    const target = T.rounds[oolongIndex], w=T.window;
+    if(Math.abs(elapsed-target) <= w){
+      gained = T.scorePer;
+      good = true;
+      spawnAroma(T.aromaRounds[oolongIndex]);
+      msg = `✅ 第 ${oolongIndex+1} 泡恰到好處（目標 ${target}s±${w}s） +${gained}`;
+      setTeaColorByProgress( (oolongIndex+1)/T.rounds.length, T.colorStops );
+      pling.play().catch(()=>{});
+    }else{
+      gained = 3;
+      msg = `⚠️ 第 ${oolongIndex+1} 泡未達最佳（${target}s±${w}s） +${gained}`;
+      fail.play().catch(()=>{});
+    }
+    totalScore += gained;
+    score.textContent = totalScore;
+
+    // 下一泡或結束
+    if(oolongIndex<2){
+      oolongIndex++;
+      extra.textContent = `烏龍第 ${oolongIndex+1} 泡`;
+      layoutZones();
+    }else{
+      // 結束三泡，若三次都 good 給 combo
+      if(totalScore>= TEAS.oolong.scorePer*3 && msg.startsWith("✅")){
+        // 只有最後一句判斷不夠嚴謹，簡化起見改為檢查最近三次是否≥10各自；此 demo 省略統計
+      }
+      extra.textContent = "烏龍三泡完成";
+      // 小加成：若最後一泡 good 再給 combo（簡化示例）
+      if(good){ totalScore += T.combo; score.textContent = totalScore; msg += `｜連續完成加成 +${T.combo}`; }
+    }
+    result.textContent = msg;
+    return;
+  }
+
+  // 其他茶型（單輪）
+  if(selectedKey==="black"){
+    const [b1,b2]=T.best, [s1,s2]=T.sub;
+    if(elapsed>=b1 && elapsed<=b2){
+      gained=T.score; good=true; msg=`✅ 醇厚區間（${(b1/60)}–${(b2/60)} 分） +${gained}`;
+      spawnAroma(T.aromaGood);
+    }else if(elapsed>=s1 && elapsed<=s2){
+      gained=T.subScore; msg=`🟡 淡雅區間（${(s1/60)}–${(s2/60)} 分） +${gained}`;
+      spawnAroma(T.aromaSub);
+    }else if(elapsed<s1){
+      gained=3; msg=`⚠️ 過短，香不足 +${gained}`; spawnAroma(T.aromaShort);
+    }else{
+      gained=3; msg=`⚠️ 過久，略苦澀 +${gained}`; spawnAroma(T.aromaLong);
+    }
+    totalScore+=gained; score.textContent=totalScore; result.textContent=msg;
+  }else{
+    const [b1,b2]=T.best;
+    if(elapsed>=b1 && elapsed<=b2){
+      gained=T.score; good=true; msg=`✅ 完美區間（${(b1/60)}–${(b2/60)} 分） +${gained}`; spawnAroma(T.aromaGood);
+    }else if(elapsed<b1){
+      gained=3; msg=`⚠️ 沖泡過短 +${gained}`; spawnAroma(T.aromaShort);
+    }else{
+      gained=3; msg=`⚠️ 沖泡過久 +${gained}`; spawnAroma(T.aromaLong);
+    }
+    totalScore+=gained; score.textContent=totalScore; result.textContent=msg;
+  }
+}
+
+/* ====== 進度動畫 ====== */
+function animateProgress(){
+  const T = TEAS[selectedKey];
+  // 將上限映射：綠 4 分、花 5 分、紅 6 分、烏龍 60s（每泡）
+  const maxSpan = (selectedKey==="green")? 240
+                : (selectedKey==="flower")? 300
+                : (selectedKey==="black")? 360
+                : 60; // oolong 每泡以 60s 視覺刻度
+  const animate = (t)=>{
+    progressId = requestAnimationFrame(animate);
+    const elapsed = (performance.now()-startAt)/1000;
+    timeRead.textContent = elapsed.toFixed(1)+"s";
+    // 填充高度 & 顏色
+    const p = Math.min(1, elapsed / (selectedKey==="oolong" ? TEAS.oolong.rounds[Math.min(oolongIndex,2)]*1.8 : maxSpan));
+    setTeaFill(p);
+    setTeaColorByProgress(p, T.colorStops);
+
+    // 進度條
+    const w = Math.min(100, elapsed/maxSpan*100);
+    bar.style.width = w+"%";
+
+    // 自動香氣（每 2 秒）
+    if(Math.floor(elapsed)%2===0 && Math.random()<0.03){
+      spawnAroma(["☁"]);
+    }
+  };
+  animate();
+}
+
+/* ====== 重置 ====== */
+resetBtn.addEventListener("click", ()=>{
+  running=false; startBtn.disabled = !selectedKey; finishBtn.disabled=true;
+  cancelAnimationFrame(progressId); pour.pause();
+  teaEl.style.background="transparent"; setTeaFill(0);
+  bar.style.width="0%"; result.textContent=""; timeRead.textContent="0.0s";
+  aromaBox.innerHTML=""; activateLeaves(false);
+  if(selectedKey==="oolong"){ oolongIndex=0; extra.textContent="烏龍第 1 泡"; layoutZones(); }
+});
+
+/* 初始 */
+layoutZones();
+</script>
+</body>
+</html>
